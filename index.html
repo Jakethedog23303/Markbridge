@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MarkBridge</title>
+<style>
+:root{--bg:#f6efe3;--card:#fffaf2;--ink:#1f1b16;--muted:#756b5f;--line:#d7c7b4;--accent:#d56a3d;--soft:#efe1cd}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#fff9ef,var(--bg),#eadcc8);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+.wrap{max-width:1120px;margin:auto;padding:18px}
+header{text-align:center;margin-bottom:14px}
+h1{font-size:clamp(36px,7vw,72px);margin:0;letter-spacing:-2px}
+.sub{color:var(--muted)}
+.card{background:rgba(255,250,242,.96);border:1px solid var(--line);border-radius:28px;padding:18px;box-shadow:0 15px 40px rgba(65,45,20,.08)}
+.top{text-align:center}
+.mode{color:var(--accent);font-weight:900;letter-spacing:.08em;font-size:13px}
+.prompt{font-size:clamp(28px,5vw,52px);font-weight:1000;margin:4px 0}
+.explain{color:var(--muted);max-width:800px;margin:0 auto;line-height:1.4}
+.canvasWrap{position:relative;width:100%;max-width:760px;aspect-ratio:1/1;margin:16px auto 0}
+canvas{width:100%;height:100%;border:1px solid var(--line);border-radius:26px;background:#fffaf4;touch-action:none}
+.ghost{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:.1;font-size:clamp(130px,26vw,330px);font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK SC",serif}
+.guide{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:.18}
+.guide svg{width:88%;height:88%}
+.hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(31,27,22,.88);color:white;padding:9px 13px;border-radius:999px;font-weight:900;text-align:center;max-width:92%}
+.bridge{max-width:880px;margin:14px auto 0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:850px){.bridge{grid-template-columns:1fr 1fr}}@media(max-width:520px){.bridge{grid-template-columns:1fr}}
+.box{background:#fffdf8;border:1px solid var(--line);border-radius:18px;padding:13px;text-align:center}
+.box b{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.big{font-size:24px;font-weight:1000}
+.char{font-size:32px;font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif CJK SC",serif;letter-spacing:4px}
+.steps{max-width:880px;margin:10px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+.steps div{background:#fff4e9;border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-weight:850}
+.controls,.strip{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+button{border:1px solid var(--line);background:#fffdf8;border-radius:14px;padding:11px 13px;font:inherit;font-weight:900;color:var(--ink)}
+button.primary{background:var(--accent);color:white;border-color:transparent}
+button.dark,button.active{background:var(--ink);color:white}
+.levelsCard{margin-top:14px}
+.levelHeader{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.levelHeader h2{margin:0}
+.score{display:flex;gap:8px;flex-wrap:wrap}
+.score div{background:white;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-weight:900}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+@media(max-width:900px){.levels{grid-template-columns:1fr 1fr}}@media(max-width:520px){.levels{grid-template-columns:1fr}}
+.levelBtn{text-align:left;border-radius:18px}
+.levelBtn span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.levelBtn.active{background:#fff0e7;border-color:var(--accent);color:var(--ink)}
+.note{margin-top:12px;background:#fffdf8;border:1px dashed var(--line);border-radius:18px;padding:13px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>MarkBridge</h1><div class="sub">Drawing and handwriting are different goals built on the same foundation: controlled mark-making.</div></header>
+
+<main class="card">
+<div class="top">
+<div class="mode" id="mode"></div>
+<div class="prompt" id="prompt"></div>
+<p class="explain" id="explain"></p>
+</div>
+
+<div class="canvasWrap">
+<canvas id="canvas" width="1000" height="1000"></canvas>
+<div class="ghost" id="ghost"></div>
+<div class="guide" id="guide"></div>
+<div class="hint" id="hint"></div>
+</div>
+
+<section class="bridge">
+<div class="box"><b>Movement</b><div class="big" id="movement"></div></div>
+<div class="box"><b>Drawing use</b><div class="big" id="drawing"></div></div>
+<div class="box"><b>Handwriting use</b><div class="char" id="writing"></div></div>
+<div class="box"><b>Character use</b><div class="char" id="chars"></div></div>
+</section>
+
+<section class="steps" id="steps"></section>
+
+<div class="controls">
+<button onclick="prev()">Back</button>
+<button onclick="toggleGhost()">Ghost on/off</button>
+<button onclick="toggleGuide()">Direction on/off</button>
+<button onclick="clearCanvas()">Clear</button>
+<button class="primary" onclick="next()">Next</button>
+<button class="dark" onclick="done()">Mark done</button>
+</div>
+</main>
+
+<section class="card levelsCard">
+<div class="levelHeader">
+<h2>Choose the bridge</h2>
+<div class="score"><div>Marks: <span id="score">0</span></div><div>Rep: <span id="rep">1</span></div></div>
+</div>
+<div class="levels" id="levels"></div>
+<div class="strip" id="items"></div>
+<div class="note" id="note"></div>
+</section>
+</div>
+
+<script>
+const data=[
+{title:"Level 1 — Universal Marks",short:"Lines, curves, circles",note:"The primitive movements appear everywhere.",items:[
+{name:"Horizontal pull",g:"一",move:"Pull right",draw:"Horizon / table edge",write:"T E F",chars:"一 二 三 十",ex:"Train the movement once, then notice where it appears in drawing, handwriting, and characters.",svg:"lineH",dot:["22%","50%","78%","50%"],hint:"Start left → pull right → lift",steps:["See the path","Pull once slowly","Repeat from memory"]},
+{name:"Vertical drop",g:"丨",move:"Pull down",draw:"Tree trunk / pole",write:"I L T",chars:"十 中 木",ex:"A vertical mark trains posture, gravity, and control.",svg:"lineV",dot:["50%","22%","50%","78%"],hint:"Start top → pull down → stop",steps:["Start high","Drop straight","Stop cleanly"]},
+{name:"Diagonal fall",g:"人",move:"Fall across",draw:"Roof / branch / limb",write:"A K X Y",chars:"人 入 八",ex:"A diagonal mark creates weight and direction.",svg:"diag",dot:["32%","28%","68%","74%"],hint:"Start high → pull down across",steps:["Start high","Fall across","Lift"]},
+{name:"Curve turn",g:"し",move:"Turn smoothly",draw:"Cheek / river / leaf",write:"C S G J",chars:"く し つ",ex:"A curve trains rhythm and softness.",svg:"curve",dot:["63%","24%","52%","76%"],hint:"Start high → curve down → finish",steps:["Start high","Turn smoothly","Finish softly"]},
+{name:"Closed loop",g:"○",move:"Loop and close",draw:"Eye / wheel / sun",write:"O D P B",chars:"口 日 の め",ex:"A loop teaches proportion and closure.",svg:"circle",dot:["50%","18%","50%","18%"],hint:"Start top → loop around → close",steps:["Begin at top","Loop round","Close the shape"]}
+]},
+{title:"Level 2 — Shape Families",short:"Boxes, branches, arches",note:"Characters and drawings are built from shape families.",items:[
+{name:"Box family",g:"口",move:"Corner → side → close",draw:"Window / door",write:"O D P B",chars:"口 日 田 回",ex:"Boxes appear in drawing, Roman letters, Chinese, Japanese, and icons.",svg:"box",dot:["31%","28%","69%","72%"],hint:"Top/left → sides → close",steps:["Make a corner","Pull the sides","Close the box"]},
+{name:"Branch family",g:"木",move:"Trunk + branches",draw:"Tree / fork",write:"K Y X",chars:"木 本 林 森",ex:"Branching shapes appear in trees, bodies, letters, and radicals.",svg:"tree",dot:["50%","18%","50%","82%"],hint:"Trunk → branch → diagonals",steps:["Trunk down","Branch across","Diagonal branches"]},
+{name:"Mountain family",g:"山",move:"Peaks + base",draw:"Mountain / skyline",write:"M W",chars:"山 出 岩",ex:"A mountain is repeated peaks with a base.",svg:"mountain",dot:["50%","22%","50%","78%"],hint:"Peak down → side peaks → base",steps:["Middle peak","Side peaks","Base line"]},
+{name:"Arch family",g:"∩",move:"Up, over, down",draw:"Bridge / doorway",write:"n m h",chars:"門 円 へ",ex:"Arches train smooth curves and structure.",svg:"arch",dot:["28%","70%","72%","70%"],hint:"Start low → arch over → land",steps:["Start low","Curve over","Land evenly"]}
+]},
+{title:"Level 3 — Same Mark, Different Goal",short:"Separate the domains",note:"Same foundation, different purpose.",items:[
+{name:"Draw reality",g:"🌳",move:"Observe → simplify",draw:"Tree sketch",write:"Label: tree",chars:"木",ex:"Drawing represents visual reality.",svg:"tree",dot:["50%","18%","50%","82%"],hint:"Reality → picture → simplified mark",steps:["Look","Simplify","Mark"]},
+{name:"Write language",g:"tree",move:"Sound/word → letters",draw:"Not the goal",write:"tree",chars:"木 / き",ex:"Handwriting represents language.",svg:"word",dot:["20%","50%","80%","50%"],hint:"Word → letters → readable mark",steps:["Think word","Form letters","Check readability"]},
+{name:"Write character",g:"木",move:"Meaning + stroke order",draw:"Tree idea",write:"ki / mù",chars:"木",ex:"Characters connect meaning, sound, and stroke movement.",svg:"tree",dot:["50%","18%","50%","82%"],hint:"Meaning → strokes → character",steps:["Meaning","Stroke order","Character"]},
+{name:"Calligraphy",g:"永",move:"Pressure + rhythm",draw:"Expressive mark",write:"Readable beauty",chars:"永",ex:"Calligraphy is writing treated as expressive drawing.",svg:"calligraphy",dot:["50%","15%","50%","82%"],hint:"Pressure → rhythm → beauty",steps:["Touch","Press/release","Finish"]}
+]},
+{title:"Level 4 — Combine",short:"Make one mark do many jobs",note:"Use the bridge creatively, but keep the goals clear.",items:[
+{name:"Tree bridge",g:"木",move:"Draw + write",draw:"Tree picture",write:"tree",chars:"木",ex:"Move from tree picture to simplified character.",svg:"tree",dot:["50%","18%","50%","82%"],hint:"Picture → stroke → character",steps:["Draw trunk","Draw branches","Simplify into 木"]},
+{name:"Sun bridge",g:"日",move:"Shape + meaning",draw:"Sun / window",write:"sun / day",chars:"日",ex:"A framed shape becomes a symbol for sun/day.",svg:"boxLine",dot:["31%","25%","69%","72%"],hint:"Sun → frame → inner line",steps:["Make frame","Add inner line","Connect meaning"]},
+{name:"Mouth bridge",g:"口",move:"Opening → box",draw:"Mouth / opening",write:"mouth",chars:"口",ex:"A simple opening becomes a readable character.",svg:"box",dot:["31%","28%","69%","72%"],hint:"Opening → border → 口",steps:["Draw opening","Square it","Name it"]},
+{name:"Signature bridge",g:"Ink",move:"Flow + identity",draw:"Expressive line",write:"Your name",chars:"印",ex:"A signature is where drawing and writing visibly meet.",svg:"signature",dot:["20%","58%","78%","42%"],hint:"Flow → rhythm → identity",steps:["Move freely","Keep readable rhythm","Make it yours"]}
+]}];
+
+let L=0,I=0,rep=Number(localStorage.getItem("mb_rep")||1),score=Number(localStorage.getItem("mb_score")||0),ghost=true,guide=true;
+const $=id=>document.getElementById(id);
+function svg(t){
+const c='stroke="#1f1b16" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.75"',a='<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#1f1b16" opacity="0.75"/></marker></defs>',n=(x,y,t)=>`<text x="${x}" y="${y}" font-size="24" font-weight="900" fill="#d56a3d">${t}</text>`;
+let m={
+lineH:`<svg viewBox="0 0 300 300">${a}${n(45,135,1)}<path ${c} marker-end="url(#arrow)" d="M65 150 H235"/></svg>`,
+lineV:`<svg viewBox="0 0 300 300">${a}${n(130,55,1)}<path ${c} marker-end="url(#arrow)" d="M150 70 V235"/></svg>`,
+diag:`<svg viewBox="0 0 300 300">${a}${n(80,75,1)}<path ${c} marker-end="url(#arrow)" d="M90 85 L210 220"/></svg>`,
+curve:`<svg viewBox="0 0 300 300">${a}${n(190,65,1)}<path ${c} marker-end="url(#arrow)" d="M190 70 C105 95 90 190 165 235"/></svg>`,
+circle:`<svg viewBox="0 0 300 300">${a}${n(145,55,1)}<path ${c} marker-end="url(#arrow)" d="M150 65 C230 70 240 230 150 235 C55 230 60 75 150 65"/></svg>`,
+box:`<svg viewBox="0 0 300 300">${a}${n(68,75,1)}${n(212,230,3)}<path ${c} marker-end="url(#arrow)" d="M80 80 V220 H220 V80 H80"/></svg>`,
+boxLine:`<svg viewBox="0 0 300 300">${a}${n(68,65,1)}${n(60,160,2)}<path ${c} marker-end="url(#arrow)" d="M80 70 V230 H220 V70 H80"/><path ${c} marker-end="url(#arrow)" d="M85 150 H215"/></svg>`,
+tree:`<svg viewBox="0 0 300 300">${a}${n(132,55,1)}${n(65,112,2)}${n(80,210,3)}${n(222,210,4)}<path ${c} marker-end="url(#arrow)" d="M150 60 V245"/><path ${c} marker-end="url(#arrow)" d="M75 115 H225"/><path ${c} marker-end="url(#arrow)" d="M145 140 L80 220"/><path ${c} marker-end="url(#arrow)" d="M155 140 L220 220"/></svg>`,
+mountain:`<svg viewBox="0 0 300 300">${a}${n(135,55,1)}${n(58,115,2)}${n(218,115,3)}<path ${c} marker-end="url(#arrow)" d="M150 75 V225"/><path ${c} marker-end="url(#arrow)" d="M75 120 V225"/><path ${c} marker-end="url(#arrow)" d="M225 120 V225"/><path ${c} marker-end="url(#arrow)" d="M75 225 H225"/></svg>`,
+arch:`<svg viewBox="0 0 300 300">${a}${n(70,220,1)}<path ${c} marker-end="url(#arrow)" d="M85 220 C85 90 215 90 215 220"/></svg>`,
+word:`<svg viewBox="0 0 300 300">${a}${n(55,135,1)}<path ${c} marker-end="url(#arrow)" d="M60 150 C95 120 120 180 150 150 S210 120 240 150"/></svg>`,
+calligraphy:`<svg viewBox="0 0 300 300">${a}${n(132,55,1)}<path ${c} marker-end="url(#arrow)" d="M150 55 C130 120 170 160 135 245 M95 115 H205 M110 180 C150 140 190 190 220 220"/></svg>`,
+signature:`<svg viewBox="0 0 300 300">${a}${n(55,165,1)}<path ${c} marker-end="url(#arrow)" d="M55 175 C85 105 120 230 150 160 C180 95 205 205 245 135"/></svg>`
+};return m[t]||"";
+}
+function render(){
+let l=data[L],it=l.items[I];
+$("mode").textContent=l.title;$("prompt").textContent=it.name;$("explain").textContent=it.ex;$("ghost").textContent=it.g;
+$("guide").innerHTML=svg(it.svg);$("hint").textContent=it.hint;$("movement").textContent=it.move;$("drawing").textContent=it.draw;$("writing").textContent=it.write;$("chars").textContent=it.chars;
+$("steps").innerHTML=it.steps.map((s,i)=>`<div>${i+1}. ${s}</div>`).join("");
+$("levels").innerHTML=data.map((x,i)=>`<button class="levelBtn ${i===L?'active':''}" onclick="setLevel(${i})"><b>${x.title}</b><span>${x.short}</span></button>`).join("");
+$("items").innerHTML=l.items.map((x,i)=>`<button class="${i===I?'active':''}" onclick="setItem(${i})">${x.g} ${x.name}</button>`).join("");
+$("note").textContent=l.note;$("score").textContent=score;$("rep").textContent=rep;
+$("ghost").style.display=ghost?"grid":"none";$("guide").style.display=guide?"grid":"none";$("hint").style.display=guide?"block":"none";
+}
+function setLevel(i){L=i;I=0;clearCanvas();render()}function setItem(i){I=i;clearCanvas();render()}
+function next(){I++;if(I>=data[L].items.length){I=0;if(L<data.length-1)L++}rep++;localStorage.setItem("mb_rep",rep);clearCanvas();render()}
+function prev(){I--;if(I<0){if(L>0){L--;I=data[L].items.length-1}else I=0}render()}
+function done(){score++;localStorage.setItem("mb_score",score);next()}
+function toggleGhost(){ghost=!ghost;render()}function toggleGuide(){guide=!guide;render()}
+function clearCanvas(){let c=$("canvas"),ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height)}
+(function setup(){let c=$("canvas"),ctx=c.getContext("2d");ctx.lineWidth=14;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#1f1b16";let d=false;
+function p(e){let r=c.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*c.width/r.width,y:(t.clientY-r.top)*c.height/r.height}}
+function down(e){d=true;let q=p(e);ctx.beginPath();ctx.moveTo(q.x,q.y);e.preventDefault()}function move(e){if(!d)return;let q=p(e);ctx.lineTo(q.x,q.y);ctx.stroke();e.preventDefault()}function up(){d=false}
+c.addEventListener("mousedown",down);c.addEventListener("mousemove",move);window.addEventListener("mouseup",up);c.addEventListener("touchstart",down,{passive:false});c.addEventListener("touchmove",move,{passive:false});c.addEventListener("touchend",up);render()})();
+</script>
+</body>
+</html>
